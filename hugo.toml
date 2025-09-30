@@ -1,4 +1,5 @@
-baseURL = 'https://tinyurl.com/mshviv/'
+#baseURL = 'https://tinyurl.com/mshviv/'
+baseURL = 'https://meshvival.netlify.app/'
 languageCode = 'de-de'
 title = 'MeshVival'
 theme = "PaperMod"
