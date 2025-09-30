@@ -1,0 +1,4 @@
+baseURL = 'https://tinyurl.com/mshviv/'
+languageCode = 'de-de'
+title = 'MeshVival'
+theme = "PaperMod"
