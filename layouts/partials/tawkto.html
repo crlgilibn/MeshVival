@@ -64,52 +64,22 @@
 }
 </style>
 
-
 <button id="clearMeshId">Mesh-ID löschen</button>
 
-<script>
-document.getElementById("clearMeshId").addEventListener("click", function () {
-  // Debugging-Breakpoint setzen
-  // debugger; // <-- hier hält DevTools sofort an, wenn der Button gedrückt wird
-
-  // Alle Tawk-Cookies löschen
-  document.cookie.split(';').forEach(function(c) {
-    var name = c.split('=')[0].trim();
-    if (name.startsWith('Tawk') || name.startsWith('twk_uuid_') || name.startsWith('twk_idm_') || name === 'meshId') {
-      document.cookie = name + '=; Max-Age=0; path=/;';
-    }
-  });
-
-  // Alles aus localStorage und sessionStorage löschen
-  Object.keys(localStorage).forEach(function(k) {
-    if (k.startsWith('Tawk')) localStorage.removeItem(k);
-  });
-  Object.keys(sessionStorage).forEach(function(k) {
-    if (k.startsWith('Tawk')) sessionStorage.removeItem(k);
-  });
-
-  // Seite neu laden
-  location.reload();
-});
-</script>
-
-<!-- Modal -->
 <div id="mesh-modal" style="display:none;">
   <div id="mesh-modal-content">
     <label for="meshIdInput">Meshtastic hex-ID:</label>
-    <input type="text" id="meshIdInput" placeholder="z.B. 123abc"/>
+    <input type="text" id="meshIdInput" placeholder=""/>
     <div class="mesh-hint">Oder Zufallszahl für Cookie</div>
-    <button id="meshSubmit">OK</button>
+    <button id="meshSubmit">OK</button>													
     <p id="meshError" style="color:red;"></p>
   </div>
 </div>
 
-<!-- <div id="chat-welcome"></div> -->
-<!-- <div id="tawk-status"></div> -->
-
 <script type="text/javascript">
 var Tawk_API = Tawk_API || {};
 var Tawk_LoadStart = new Date();
+
 
 // ---------------- Cookie Funktionen ----------------
 function setCookie(name, value, days){
@@ -174,25 +144,86 @@ function initTawk(mesh){
     }
 }
 
-// ---------------- Mesh-ID prüfen ----------------
-var meshId = getCookie("meshId");
+function openMeshModal() {
+  const modal = document.getElementById("mesh-modal");
 
-if(meshId && isValidMeshId(meshId)){
+  // 24-Bit Zufallszahl erzeugen
+  const rand = Math.floor(Math.random() * 0x1000000);
+  const hex = rand.toString(16).padStart(6, "0");
+
+  const input = document.getElementById("meshIdInput");
+  input.placeholder = hex;
+  input.value = ""; // Benutzer darf überschreiben
+
+  modal.style.display = "flex";
+
+  document.getElementById("meshSubmit").onclick = function() {
+    const value = input.value.trim() || input.placeholder;
+
+    if (isValidMeshId(value)) {
+      setCookie("meshId", value, 365);
+      modal.style.display = "none";
+      initTawk(value);
+    } else {
+      document.getElementById("meshError").innerText =
+        "Ungültige ID, min. 1, max. 6 Buchstaben/Zahlen erlaubt";
+    }
+  };
+}
+
+document.getElementById("meshSubmit").addEventListener("click", function() {
+  const input = document.getElementById("meshIdInput");
+  // Wenn leer, nimm den placeholder
+  const value = input.value.trim() || input.placeholder;
+
+  if (!/^[0-9a-f]{6}$/i.test(value)) {
+    document.getElementById("meshError").textContent = "Ungültige Hex-ID (6 Stellen)";
+    return;
+  }
+  
+  document.getElementById("meshError").textContent = "";
+  console.log("Mesh-ID gewählt:", value);
+  // Modal schließen
+  document.getElementById("mesh-modal").style.display = "none";
+});
+
+
+document.getElementById("clearMeshId").addEventListener("click", function () {
+  // Debugging-Breakpoint setzen
+  // debugger; // <-- hier hält DevTools sofort an, wenn der Button gedrückt wird
+
+  // Alle Tawk-Cookies löschen
+  document.cookie.split(';').forEach(function(c) {
+    var name = c.split('=')[0].trim();
+    if (name.startsWith('Tawk') || name.startsWith('twk') || name === 'meshId') {
+      document.cookie = name + '=; Max-Age=0; path=/;';
+    }
+  });
+
+  // Alles aus localStorage und sessionStorage löschen
+  Object.keys(localStorage).forEach(function(k) {
+    if (k.startsWith('Tawk') || k.startsWith('twk')) localStorage.removeItem(k);
+  });
+  Object.keys(sessionStorage).forEach(function(k) {
+    if (k.startsWith('Tawk') || k.startsWith('twk')) sessionStorage.removeItem(k);
+  });
+
+  // Seite neu laden
+  location.reload();
+});
+
+
+
+// Hauptlogik: Cookie prüfen oder Modal öffnen
+(function(){
+  var meshId = getCookie("meshId");
+
+  if (meshId && isValidMeshId(meshId)) {
     // Cookie existiert → direkt Tawk laden
     initTawk(meshId);
-} else {
-    // Modal zeigen
-    var modal = document.getElementById("mesh-modal");
-    modal.style.display = "flex";
-    document.getElementById("meshSubmit").onclick = function(){
-        var input = document.getElementById("meshIdInput").value.trim();
-        if(isValidMeshId(input)){
-            setCookie("meshId", input, 365);
-            modal.style.display = "none";
-            initTawk(input);
-        } else {
-            document.getElementById("meshError").innerText = "Ungültige ID, min. 1, max. 6 Buchstaben/Zahlen erlaubt";
-        }
-    };
-}
+  } else {
+    // Modal öffnen
+    openMeshModal();
+  }
+})();
 </script>
