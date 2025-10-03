@@ -75,7 +75,7 @@ document.getElementById("clearMeshId").addEventListener("click", function () {
   // Alle Tawk-Cookies löschen
   document.cookie.split(';').forEach(function(c) {
     var name = c.split('=')[0].trim();
-    if (name.startsWith('Tawk') || name.startsWith('twk_uuid_') || name === 'meshId') {
+    if (name.startsWith('Tawk') || name.startsWith('twk_uuid_') || name.startsWith('twk_idm_') || name === 'meshId') {
       document.cookie = name + '=; Max-Age=0; path=/;';
     }
   });
