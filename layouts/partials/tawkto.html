@@ -19,6 +19,21 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
+#mesh-modal-content label {
+  display: block;        /* damit es sauber über dem Input steht */
+  margin-bottom: 0.5rem; /* Abstand zum Eingabefeld */
+  font-size: 1rem;
+  font-weight: 600;      /* etwas kräftiger */
+  color: #000;           /* schwarze Schrift */
+}
+
+#mesh-modal-content .mesh-hint {
+  font-size: 0.875rem;      /* kleiner als normales Label */
+  color: #555;              /* etwas dunkleres Grau */
+  margin-top: 0.25rem;      /* Abstand zum Input */
+  text-align: center;       /* optional zentrieren */
+}
+
 #mesh-modal-content input {
   width: 70%;
   padding: 0.5rem;
@@ -50,22 +65,47 @@
 </style>
 
 
-<button onclick="document.cookie='meshId=; Max-Age=0; path=/'; location.reload();">
-  Mesh-ID löschen
-</button>
+<button id="clearMeshId">Mesh-ID löschen</button>
+
+<script>
+document.getElementById("clearMeshId").addEventListener("click", function () {
+  // Debugging-Breakpoint setzen
+  // debugger; // <-- hier hält DevTools sofort an, wenn der Button gedrückt wird
+
+  // Alle Tawk-Cookies löschen
+  document.cookie.split(';').forEach(function(c) {
+    var name = c.split('=')[0].trim();
+    if (name.startsWith('Tawk') || name.startsWith('twk_uuid_') || name === 'meshId') {
+      document.cookie = name + '=; Max-Age=0; path=/;';
+    }
+  });
+
+  // Alles aus localStorage und sessionStorage löschen
+  Object.keys(localStorage).forEach(function(k) {
+    if (k.startsWith('Tawk')) localStorage.removeItem(k);
+  });
+  Object.keys(sessionStorage).forEach(function(k) {
+    if (k.startsWith('Tawk')) sessionStorage.removeItem(k);
+  });
+
+  // Seite neu laden
+  location.reload();
+});
+</script>
 
 <!-- Modal -->
 <div id="mesh-modal" style="display:none;">
   <div id="mesh-modal-content">
-    <label for="meshIdInput">Bitte Mesh-ID eingeben:</label><br/>
-    <input type="text" id="meshIdInput" placeholder="z.B. 9e9a8fd8"/>
+    <label for="meshIdInput">Bitte die 6-stellige Meshtastic ID eingeben:</label>
+    <input type="text" id="meshIdInput" placeholder="z.B. 123abc"/>
+    <div class="mesh-hint">Wird nur beim Chat benötigt, sonst z.B. "123"</div>
     <button id="meshSubmit">OK</button>
     <p id="meshError" style="color:red;"></p>
   </div>
 </div>
 
-<div id="chat-welcome"></div>
-<div id="tawk-status"></div>
+<!-- <div id="chat-welcome"></div> -->
+<!-- <div id="tawk-status"></div> -->
 
 <script type="text/javascript">
 var Tawk_API = Tawk_API || {};
@@ -92,8 +132,8 @@ function getCookie(name){
     return null;
 }
 
-function isValidMeshId(id){
-    return /^[a-zA-Z0-9]+$/.test(id);
+function isValidMeshId(id) {
+  return /^[a-zA-Z0-9]{1,6}$/.test(id);
 }
 
 // ---------------- Tawk laden ----------------
@@ -105,22 +145,22 @@ function initTawk(mesh){
             //email: mesh + "@meshtastic.local"
         }, function(error){
             if(!error){
-                var welcome = document.getElementById("chat-welcome");
-                if(welcome) welcome.innerText = "Hallo N-" + mesh + ", willkommen im Chat!";
+                var welcome = document.getElementById("clearMeshId");
+                if(welcome) welcome.innerText = "ID N-" + mesh + " und Chat löschen";
             }
         });
 
         // Agentenstatus
-        if(typeof Tawk_API.onStatusChange === "function"){
-            Tawk_API.onStatusChange(function(status){
-                var el = document.getElementById("tawk-status");
-                if(el){
-                    if(status==="online") el.innerText="Chat: Online ✅";
-                    else if(status==="away") el.innerText="Chat: Abwesend ⚠️";
-                    else el.innerText="Chat: Offline ❌";
-                }
-            });
-        }
+        // if(typeof Tawk_API.onStatusChange === "function"){
+        //     Tawk_API.onStatusChange(function(status){
+        //         var el = document.getElementById("tawk-status");
+        //         if(el){
+        //             if(status==="online") el.innerText="Chat: Online ✅";
+        //             else if(status==="away") el.innerText="Chat: Abwesend ⚠️";
+        //             else el.innerText="Chat: Offline ❌";
+        //         }
+        //     });
+        // }
     };
 
     // Widget nur einmal laden
@@ -151,7 +191,7 @@ if(meshId && isValidMeshId(meshId)){
             modal.style.display = "none";
             initTawk(input);
         } else {
-            document.getElementById("meshError").innerText = "Ungültige ID, nur Buchstaben/Zahlen erlaubt";
+            document.getElementById("meshError").innerText = "Ungültige ID, min. 1, max. 6 Buchstaben/Zahlen erlaubt";
         }
     };
 }
