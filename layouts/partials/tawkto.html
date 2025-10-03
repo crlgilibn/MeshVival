@@ -1,0 +1,158 @@
+<!-- Tawk.to Partial mit Modal Overlay für Mesh-ID -->
+<style>
+/* Modal Overlay */
+#mesh-modal {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: flex; justify-content: center; align-items: center;
+  z-index: 9999;
+}
+
+#mesh-modal-content {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+#mesh-modal-content input {
+  width: 70%;
+  padding: 0.5rem;
+  margin-right: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #888;
+  border-radius: 0.25rem;
+}
+
+#mesh-modal-content button {
+  padding: 0.5rem 1rem;
+  background-color: #1d4ed8;
+  color: #fff;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+#mesh-modal-content button:hover {
+  background-color: #2563eb;
+}
+
+/* Chat-Hinweise */
+#chat-welcome, #tawk-status {
+  text-align: center;
+  margin-top: 1rem;
+  color: #000;
+}
+</style>
+
+
+<button onclick="document.cookie='meshId=; Max-Age=0; path=/'; location.reload();">
+  Mesh-ID löschen
+</button>
+
+<!-- Modal -->
+<div id="mesh-modal" style="display:none;">
+  <div id="mesh-modal-content">
+    <label for="meshIdInput">Bitte Mesh-ID eingeben:</label><br/>
+    <input type="text" id="meshIdInput" placeholder="z.B. 9e9a8fd8"/>
+    <button id="meshSubmit">OK</button>
+    <p id="meshError" style="color:red;"></p>
+  </div>
+</div>
+
+<div id="chat-welcome"></div>
+<div id="tawk-status"></div>
+
+<script type="text/javascript">
+var Tawk_API = Tawk_API || {};
+var Tawk_LoadStart = new Date();
+
+// ---------------- Cookie Funktionen ----------------
+function setCookie(name, value, days){
+    var expires = "";
+    if(days){
+        var date = new Date();
+        date.setTime(date.getTime() + (days*24*60*60*1000));
+        expires = "; expires="+date.toUTCString();
+    }
+    document.cookie = name+"="+(value||"")+expires+"; path=/";
+}
+
+function getCookie(name){
+    var nameEQ = name+"=";
+    var ca = document.cookie.split(';');
+    for(var i=0;i<ca.length;i++){
+        var c = ca[i].trim();
+        if(c.indexOf(nameEQ)===0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+}
+
+function isValidMeshId(id){
+    return /^[a-zA-Z0-9]+$/.test(id);
+}
+
+// ---------------- Tawk laden ----------------
+function initTawk(mesh){
+    // Tawk Name & Email setzen, Begrüßung
+    Tawk_API.onLoad = function(){
+        Tawk_API.setAttributes({
+            name: "N-" + mesh
+            //email: mesh + "@meshtastic.local"
+        }, function(error){
+            if(!error){
+                var welcome = document.getElementById("chat-welcome");
+                if(welcome) welcome.innerText = "Hallo N-" + mesh + ", willkommen im Chat!";
+            }
+        });
+
+        // Agentenstatus
+        if(typeof Tawk_API.onStatusChange === "function"){
+            Tawk_API.onStatusChange(function(status){
+                var el = document.getElementById("tawk-status");
+                if(el){
+                    if(status==="online") el.innerText="Chat: Online ✅";
+                    else if(status==="away") el.innerText="Chat: Abwesend ⚠️";
+                    else el.innerText="Chat: Offline ❌";
+                }
+            });
+        }
+    };
+
+    // Widget nur einmal laden
+    if(!document.getElementById("tawk-script")){
+        var s=document.createElement("script");
+        s.id="tawk-script";
+        s.type="text/javascript";
+        s.async=true;
+        s.src='https://embed.tawk.to/68de81da2a8b16195305984d/1j6iimgai';
+        document.body.appendChild(s);
+    }
+}
+
+// ---------------- Mesh-ID prüfen ----------------
+var meshId = getCookie("meshId");
+
+if(meshId && isValidMeshId(meshId)){
+    // Cookie existiert → direkt Tawk laden
+    initTawk(meshId);
+} else {
+    // Modal zeigen
+    var modal = document.getElementById("mesh-modal");
+    modal.style.display = "flex";
+    document.getElementById("meshSubmit").onclick = function(){
+        var input = document.getElementById("meshIdInput").value.trim();
+        if(isValidMeshId(input)){
+            setCookie("meshId", input, 365);
+            modal.style.display = "none";
+            initTawk(input);
+        } else {
+            document.getElementById("meshError").innerText = "Ungültige ID, nur Buchstaben/Zahlen erlaubt";
+        }
+    };
+}
+</script>
