@@ -103,7 +103,7 @@ function getCookie(name){
 }
 
 function isValidMeshId(id) {
-  return /^[a-zA-Z0-9]{1,6}$/.test(id);
+  return /^[a-zA-Z0-9]{1,8}$/.test(id);
 }
 
 // ---------------- Tawk laden ----------------
@@ -116,7 +116,7 @@ function initTawk(mesh){
         }, function(error){
             if(!error){
                 var welcome = document.getElementById("clearMeshId");
-                if(welcome) welcome.innerText = "ID N-" + mesh + " und Chat löschen";
+                if(welcome) welcome.innerText = "💬 N-" + mesh + " löschen";
             }
         });
 
@@ -141,6 +141,16 @@ function initTawk(mesh){
         s.async=true;
         s.src='https://embed.tawk.to/68de81da2a8b16195305984d/1j6iimgai';
         document.body.appendChild(s);
+		
+       // var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+       // (function(){
+       // var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+       // s1.async=true;
+       // s1.src='https://embed.tawk.to/68de81da2a8b16195305984d/1j6iimgai';
+       // s1.charset='UTF-8';
+       // s1.setAttribute('crossorigin','*');
+       // s0.parentNode.insertBefore(s1,s0);
+       // })();		
     }
 }
 
@@ -148,8 +158,8 @@ function openMeshModal() {
   const modal = document.getElementById("mesh-modal");
 
   // 24-Bit Zufallszahl erzeugen
-  const rand = Math.floor(Math.random() * 0x1000000);
-  const hex = rand.toString(16).padStart(6, "0");
+  const rand = Math.floor(Math.random() * 0x100000000);
+  const hex = rand.toString(16).padStart(8, "0");
 
   const input = document.getElementById("meshIdInput");
   input.placeholder = hex;
@@ -166,7 +176,7 @@ function openMeshModal() {
       initTawk(value);
     } else {
       document.getElementById("meshError").innerText =
-        "Ungültige ID, min. 1, max. 6 Buchstaben/Zahlen erlaubt";
+        "Ungültige ID, min. 1, max. 8 Buchstaben/Zahlen erlaubt";
     }
   };
 }
@@ -176,8 +186,8 @@ document.getElementById("meshSubmit").addEventListener("click", function() {
   // Wenn leer, nimm den placeholder
   const value = input.value.trim() || input.placeholder;
 
-  if (!/^[0-9a-f]{6}$/i.test(value)) {
-    document.getElementById("meshError").textContent = "Ungültige Hex-ID (6 Stellen)";
+  if (!/^[0-9a-f]{8}$/i.test(value)) {
+    document.getElementById("meshError").textContent = "Ungültige Hex-ID (8 Stellen)";
     return;
   }
   
@@ -189,13 +199,10 @@ document.getElementById("meshSubmit").addEventListener("click", function() {
 
 
 document.getElementById("clearMeshId").addEventListener("click", function () {
-  // Debugging-Breakpoint setzen
-  // debugger; // <-- hier hält DevTools sofort an, wenn der Button gedrückt wird
-
   // Alle Tawk-Cookies löschen
   document.cookie.split(';').forEach(function(c) {
     var name = c.split('=')[0].trim();
-    if (name.startsWith('Tawk') || name.startsWith('twk') || name === 'meshId') {
+    if (name.startsWith('Tawk') || name.startsWith('twk_') || name === 'meshId') {
       document.cookie = name + '=; Max-Age=0; path=/;';
     }
   });
@@ -207,7 +214,17 @@ document.getElementById("clearMeshId").addEventListener("click", function () {
   Object.keys(sessionStorage).forEach(function(k) {
     if (k.startsWith('Tawk') || k.startsWith('twk')) sessionStorage.removeItem(k);
   });
-
+  
+  if (indexedDB.databases) { // return; // ältere Browser
+    debugger; // <-- hier hält DevTools sofort an, wenn der Button gedrückt wird
+    indexedDB.databases().then(dbs => {
+      dbs.forEach(db => {
+        if (db.name && (db.name.startsWith("Tawk") || db.name.startsWith("twk"))) {
+          indexedDB.deleteDatabase(db.name);
+        }
+      });
+    });
+  }
   // Seite neu laden
   location.reload();
 });
@@ -226,4 +243,5 @@ document.getElementById("clearMeshId").addEventListener("click", function () {
     openMeshModal();
   }
 })();
+
 </script>
