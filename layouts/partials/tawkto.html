@@ -197,8 +197,7 @@ document.getElementById("meshSubmit").addEventListener("click", function() {
   document.getElementById("mesh-modal").style.display = "none";
 });
 
-
-document.getElementById("clearMeshId").addEventListener("click", function () {
+document.getElementById("clearMeshId").addEventListener("click", async function () {
   // Alle Tawk-Cookies löschen
   document.cookie.split(';').forEach(function(c) {
     var name = c.split('=')[0].trim();
@@ -211,25 +210,24 @@ document.getElementById("clearMeshId").addEventListener("click", function () {
   Object.keys(localStorage).forEach(function(k) {
     if (k.startsWith('Tawk') || k.startsWith('twk')) localStorage.removeItem(k);
   });
+  
   Object.keys(sessionStorage).forEach(function(k) {
     if (k.startsWith('Tawk') || k.startsWith('twk')) sessionStorage.removeItem(k);
   });
   
-  if (indexedDB.databases) { // return; // ältere Browser
-    debugger; // <-- hier hält DevTools sofort an, wenn der Button gedrückt wird
-    indexedDB.databases().then(dbs => {
-      dbs.forEach(db => {
-        if (db.name && (db.name.startsWith("Tawk") || db.name.startsWith("twk"))) {
-          indexedDB.deleteDatabase(db.name);
-        }
-      });
-    });
+  if (typeof indexedDB.databases === "function") {
+    const dbs = await indexedDB.databases();
+    for (const db of dbs) {
+      if (db.name && (db.name.startsWith("Tawk") || db.name.startsWith("twk"))) {
+	    debugger; // <-- hier hält DevTools sofort an, wenn der Button gedrückt wird
+        indexedDB.deleteDatabase(db.name);
+      }
+    }
   }
+
   // Seite neu laden
   location.reload();
 });
-
-
 
 // Hauptlogik: Cookie prüfen oder Modal öffnen
 (function(){
