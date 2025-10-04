@@ -77,169 +77,194 @@
 </div>
 
 <script type="text/javascript">
-var Tawk_API = Tawk_API || {};
-var Tawk_LoadStart = new Date();
 
-
-// ---------------- Cookie Funktionen ----------------
-function setCookie(name, value, days){
-    var expires = "";
-    if(days){
-        var date = new Date();
-        date.setTime(date.getTime() + (days*24*60*60*1000));
-        expires = "; expires="+date.toUTCString();
-    }
-    document.cookie = name+"="+(value||"")+expires+"; path=/";
+/* Hilfsfunktionen */
+function setCookie(name, value, days) {
+  var expires = "";
+  if (days) {
+    var d = new Date();
+    d.setTime(d.getTime() + days*24*60*60*1000);
+    expires = "; expires=" + d.toUTCString();
+  }
+  document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
+}
+function getCookie(name) {
+  var v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? decodeURIComponent(v.pop()) : null;
+}
+function deleteCookie(name) {
+  document.cookie = name + "=; Max-Age=0; path=/";
 }
 
-function getCookie(name){
-    var nameEQ = name+"=";
-    var ca = document.cookie.split(';');
-    for(var i=0;i<ca.length;i++){
-        var c = ca[i].trim();
-        if(c.indexOf(nameEQ)===0) return c.substring(nameEQ.length,c.length);
-    }
-    return null;
+/* Fallback-Validator, nur falls isValidMeshId nicht vorhanden ist */
+if (typeof isValidMeshId !== 'function') {
+  function isValidMeshId(x) {
+    return /^[A-Za-z0-9]{1,8}$/.test(String(x));
+  }
 }
 
-function isValidMeshId(id) {
-  return /^[a-zA-Z0-9]{1,8}$/.test(id);
-}
+/* Aktualisiert den "clearMeshId"-Button und setzt den Lösch-Handler */
+function updateClearButton(mesh) {
+  const btn = document.getElementById("clearMeshId");
+  if (!btn) return;
+  btn.innerText = "💬 N-" + mesh + " löschen";
+  btn.dataset.mesh = mesh;
 
-// ---------------- Tawk laden ----------------
-function initTawk(mesh){
-    // Tawk Name & Email setzen, Begrüßung
-    Tawk_API.onLoad = function(){
-        Tawk_API.setAttributes({
-            name: "N-" + mesh
-            //email: mesh + "@meshtastic.local"
-        }, function(error){
-            if(!error){
-                var welcome = document.getElementById("clearMeshId");
-                if(welcome) welcome.innerText = "💬 N-" + mesh + " löschen";
-            }
-        });
+  // Ersetze vorhandenen Handler (keine Mehrfach-Handler)
+  btn.onclick = async function () {
+    // Optional: bestätigung
+    if (!confirm("Mesh-ID N-" + mesh + " wirklich löschen und Chat zurücksetzen?")) return;
 
-        // Agentenstatus
-        // if(typeof Tawk_API.onStatusChange === "function"){
-        //     Tawk_API.onStatusChange(function(status){
-        //         var el = document.getElementById("tawk-status");
-        //         if(el){
-        //             if(status==="online") el.innerText="Chat: Online ✅";
-        //             else if(status==="away") el.innerText="Chat: Abwesend ⚠️";
-        //             else el.innerText="Chat: Offline ❌";
-        //         }
-        //     });
-        // }
-    };
-
-    // Widget nur einmal laden
-    if(!document.getElementById("tawk-script")){
-        var s=document.createElement("script");
-        s.id="tawk-script";
-        s.type="text/javascript";
-        s.async=true;
-        s.src='https://embed.tawk.to/68de81da2a8b16195305984d/1j6iimgai';
-        document.body.appendChild(s);
-		
-       // var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-       // (function(){
-       // var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-       // s1.async=true;
-       // s1.src='https://embed.tawk.to/68de81da2a8b16195305984d/1j6iimgai';
-       // s1.charset='UTF-8';
-       // s1.setAttribute('crossorigin','*');
-       // s0.parentNode.insertBefore(s1,s0);
-       // })();		
+    // Löschen (await für caches)
+    if (window.caches) {
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      } catch (e) {
+        console.warn("Caches löschen fehlgeschlagen:", e);
+      }
     }
-}
 
-function openMeshModal() {
-  const modal = document.getElementById("mesh-modal");
+    // Clear storages
+    try { localStorage.clear(); } catch (e) {}
+    try { sessionStorage.clear(); } catch (e) {}
 
-  // 24-Bit Zufallszahl erzeugen
-  const rand = Math.floor(Math.random() * 0x100000000);
-  const hex = rand.toString(16).padStart(8, "0");
+    // Cookies löschen (alle lokalen Cookies)
+    document.cookie.split(';').forEach(c => {
+      const name = c.split('=')[0].trim();
+      document.cookie = name + '=; Max-Age=0; path=/;';
+    });
 
-  const input = document.getElementById("meshIdInput");
-  input.placeholder = hex;
-  input.value = ""; // Benutzer darf überschreiben
+    // Mesh-Cookie explizit löschen
+    deleteCookie('meshId');
 
-  modal.style.display = "flex";
+    // Tawk-Elemente entfernen (Script + iframe)
+    document.querySelectorAll("iframe[src*='tawk.to']").forEach(f => f.remove());
+    const s = document.getElementById("tawk-script");
+    if (s) s.remove();
 
-  document.getElementById("meshSubmit").onclick = function() {
-    const value = input.value.trim() || input.placeholder;
+    // Versuche globale API zu entfernen
+    try { delete window.Tawk_API; } catch(e) {}
+    try { delete window.Tawk_LoadStart; } catch(e) {}
 
-    if (isValidMeshId(value)) {
-      setCookie("meshId", value, 365);
-      modal.style.display = "none";
-      initTawk(value);
-    } else {
-      document.getElementById("meshError").innerText =
-        "Ungültige ID, min. 1, max. 8 Buchstaben/Zahlen erlaubt";
-    }
+    // Seite neu laden (erst nachdem obige async-Arbeiten abgeschlossen sind)
+    location.reload();
   };
 }
 
-document.getElementById("meshSubmit").addEventListener("click", function() {
-  const input = document.getElementById("meshIdInput");
-  // Wenn leer, nimm den placeholder
-  const value = input.value.trim() || input.placeholder;
+/* initTawk: robustere Variante, die auch dann arbeitet, wenn das Script schon geladen ist */
+function initTawk(mesh) {
+  // Sorge dafür, dass Tawk_API existiert und Tawk_LoadStart gesetzt ist (ähnlich original)
+  window.Tawk_API = window.Tawk_API || {};
+  window.Tawk_LoadStart = window.Tawk_LoadStart || new Date();
 
-  if (!/^[0-9a-f]{8}$/i.test(value)) {
-    document.getElementById("meshError").textContent = "Ungültige Hex-ID (8 Stellen)";
+  // onLoad handler (wird entweder vom Widget aufgerufen oder wir rufen setAttributes direkt auf)
+  const doSetAttrs = function() {
+    if (window.Tawk_API && typeof window.Tawk_API.setAttributes === 'function') {
+      window.Tawk_API.setAttributes({
+        name: "N-" + mesh
+        // email: mesh + "@meshtastic.local"
+      }, function(error) {
+        if (!error) {
+          updateClearButton(mesh);
+        }
+      });
+    } else {
+      // Falls noch nicht verfügbar: trotzdem Button aktualisieren
+      updateClearButton(mesh);
+    }
+  };
+
+  // Registrieren des onLoad-Handlers so, dass das Tawk-Widget ihn aufruft
+  try {
+    // Manche Implementationen benutzen onLoad property
+    window.Tawk_API.onLoad = doSetAttrs;
+  } catch (e) {}
+
+  // Falls bereits verfügbar, sofort setzen
+  if (window.Tawk_API && typeof window.Tawk_API.setAttributes === 'function') {
+    doSetAttrs();
+  }
+
+  // Widget nur einmal anfügen
+  if (!document.getElementById("tawk-script")) {
+    var s = document.createElement("script");
+    s.id = "tawk-script";
+    s.type = "text/javascript";
+    s.async = true;
+    s.charset = 'UTF-8';
+    s.setAttribute('crossorigin', '*');
+    s.src = 'https://embed.tawk.to/68de81da2a8b16195305984d/1j6iimgai';
+    document.body.appendChild(s);
+  }
+}
+
+/* Modal öffnen und Mesh-ID abfragen */
+function openMeshModal() {
+  const modal = document.getElementById("mesh-modal");
+  const input = document.getElementById("meshIdInput");
+  const submit = document.getElementById("meshSubmit");
+  const errorEl = document.getElementById("meshError");
+
+  if (!modal || !input || !submit) {
+    console.warn("Modal-Elemente fehlen.");
     return;
   }
-  
-  document.getElementById("meshError").textContent = "";
-  console.log("Mesh-ID gewählt:", value);
-  // Modal schließen
-  document.getElementById("mesh-modal").style.display = "none";
-});
 
-document.getElementById("clearMeshId").addEventListener("click", async function () {
-  // Alle Tawk-Cookies löschen
-  document.cookie.split(';').forEach(function(c) {
-    var name = c.split('=')[0].trim();
-    if (name.startsWith('Tawk') || name.startsWith('twk_') || name === 'meshId') {
-      document.cookie = name + '=; Max-Age=0; path=/;';
+  // Zufall (8 hex Zeichen)
+  const rand = Math.floor(Math.random() * 0x100000000);
+  const hex = rand.toString(16).padStart(8, "0");
+  input.placeholder = hex;
+  input.value = "";
+
+  modal.style.display = "flex";
+  errorEl && (errorEl.innerText = "");
+
+  // Überschreibenden Handler setzen (ersetzt vorherige)
+  submit.onclick = function () {
+    const value = (input.value || input.placeholder || "").trim();
+    if (!isValidMeshId(value)) {
+      if (errorEl) errorEl.innerText = "Ungültige ID, min. 1, max. 8 Buchstaben/Zahlen erlaubt";
+      return;
     }
-  });
 
-  // Alles aus localStorage und sessionStorage löschen
-  Object.keys(localStorage).forEach(function(k) {
-    if (k.startsWith('Tawk') || k.startsWith('twk')) localStorage.removeItem(k);
-  });
-  
-  Object.keys(sessionStorage).forEach(function(k) {
-    if (k.startsWith('Tawk') || k.startsWith('twk')) sessionStorage.removeItem(k);
-  });
-  
-  if (typeof indexedDB.databases === "function") {
-    const dbs = await indexedDB.databases();
-    for (const db of dbs) {
-      if (db.name && (db.name.startsWith("Tawk") || db.name.startsWith("twk"))) {
-	    debugger; // <-- hier hält DevTools sofort an, wenn der Button gedrückt wird
-        indexedDB.deleteDatabase(db.name);
-      }
-    }
-  }
+    // Save + init + Button update
+    setCookie("meshId", value, 365);
+    modal.style.display = "none";
+    initTawk(value);
+    updateClearButton(value);
+  };
+}
 
-  // Seite neu laden
-  location.reload();
-});
-
-// Hauptlogik: Cookie prüfen oder Modal öffnen
-(function(){
-  var meshId = getCookie("meshId");
-
-  if (meshId && isValidMeshId(meshId)) {
-    // Cookie existiert → direkt Tawk laden
-    initTawk(meshId);
+/* Hauptlogik */
+document.addEventListener("DOMContentLoaded", function () {
+  const mesh = getCookie("meshId");
+  if (mesh && isValidMeshId(mesh)) {
+    initTawk(mesh);
+    updateClearButton(mesh);
   } else {
-    // Modal öffnen
     openMeshModal();
   }
-})();
 
+  // Falls es einen statischen clear button ohne Daten gibt, stelle sicher dass er einen Handler hat
+  // (wird überschrieben, wenn updateClearButton später aufgerufen wird)
+  const staticClear = document.getElementById("clearMeshId");
+  if (staticClear && !staticClear.onclick) {
+    staticClear.onclick = function () {
+      // fallback: wenn kein mesh gesetzt, lösche trotzdem
+      if (confirm("Alle lokalen Daten löschen?")) {
+        if (window.caches) {
+          caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        }
+        try { localStorage.clear(); } catch(e) {}
+        try { sessionStorage.clear(); } catch(e) {}
+        document.querySelectorAll("iframe[src*='tawk.to']").forEach(f => f.remove());
+        const s = document.getElementById("tawk-script"); if (s) s.remove();
+        deleteCookie('meshId');
+        location.reload();
+      }
+    };
+  }
+});
 </script>
+
